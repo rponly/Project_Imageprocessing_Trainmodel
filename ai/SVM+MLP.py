@@ -96,7 +96,7 @@ print(mlp_predict_result)
 
 #KNN
 from sklearn.neighbors import KNeighborsClassifier
-knn = KNeighborsClassifier(n_neighbors=5)
+knn = KNeighborsClassifier(n_neighbors=5,random_state=42)
 estimators.append(('knn', knn))
 knn.fit(features, labels)
 filename = 'KNN_finalized_model.sav'
