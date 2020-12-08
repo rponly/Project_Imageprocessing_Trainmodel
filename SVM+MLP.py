@@ -53,17 +53,16 @@ def load_images_from_folder(folders):
 
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-d", "--dataset", required=True,
+""" ap.add_argument("-d", "--dataset", required=True,
 	help="path to input dataset")
 ap.add_argument("-p", "--Predictfeature", required=True,
-	help="path to Predict feature")
+	help="path to Predict feature") """
 ap.add_argument("-n", "--Name", required=True,
 	help="path to user model")
 
 
 args = vars(ap.parse_args())
-imagePaths = list(paths.list_images(args["dataset"]))
-testPaths = list(paths.list_images(args["Predictfeature"]))
+imagePaths = list(paths.list_images('Dataset_Kaggle'))
 
 try:
     os.mkdir(args["Name"])
@@ -92,8 +91,7 @@ def under_sampling(min,data_list):
 
 min_images = min(number_of_images)
 training_data = under_sampling(min_images,training_data)
-""" training_data = tf.keras.applications.mobilenet_v2.preprocess_input(
-    training_data, data_format=None) """
+
 
 def defined_output(number_of_images):
     label = []
@@ -114,7 +112,7 @@ print(y)
 features = []
 features_mnet =[]
 labels = []
-testfeatures = []
+
 for (i, imagePath) in enumerate(imagePaths):
 	# load the image and extract the class label (assuming that our
 	# path as the format: /path/to/dataset/{class}.{image_num}.jpg
@@ -131,14 +129,6 @@ for (i, imagePath) in enumerate(imagePaths):
 	if i > 0 and i % 1000 == 0:
 		print("[INFO] processed {}/{}".format(i, len(imagePaths)))
 
-for (i, testPaths) in enumerate(testPaths):
-	# load the image and extract the class label (assuming that our
-	# path as the format: /path/to/dataset/{class}.{image_num}.jpg
-	image = cv2.imread(testPaths)
-	
-
-	pixels = image_to_feature_vector(image)
-	testfeatures.append(pixels)
 	
 # show some information on the memory consumed by the raw images
 # matrix and features matrix
@@ -160,22 +150,18 @@ estimators.append(('svm', svclassifier))
 svclassifier.fit(features, labels)
 filename = 'SVM_finalized_model.sav'
 pickle.dump(svclassifier, open('./'+args["Name"]+ '/'+filename, 'wb'))
-SVM_predict_result = svclassifier.predict(testfeatures)
-score = svclassifier.score
-print ("svm predict")
-print(SVM_predict_result)
-print(score)
+
+
 
 #MLP
 from sklearn.neural_network import MLPClassifier
 mlp = MLPClassifier(hidden_layer_sizes=(88,), activation='relu', solver='lbfgs', max_iter=500 ,random_state=42) #48 72 80 r 70
-estimators.append(('mlp', mlp))
+#estimators.append(('mlp', mlp))
+
 mlp.fit(features,labels)
 filename = 'MLP_finalized_model.sav'
 pickle.dump(mlp, open('./'+args["Name"]+ '/'+filename, 'wb'))
-mlp_predict_result = mlp.predict(testfeatures)
-print ("mlp predict")
-print(mlp_predict_result)
+
 
 
 #MoblienetV2
