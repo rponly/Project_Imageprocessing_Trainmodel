@@ -191,9 +191,24 @@ model.compile(optimizer=tf.keras.optimizers.Adam(lr=base_learning_rate),
               metrics=['accuracy'])
 model.summary()
 estimators.append(('MV5', model))
-history = model.fit(features_mnet,y,epochs=10,callbacks=cb)
+history = model.fit(features_mnet,y,epochs=10)
+base_model.trainable = True
+model.evaluate(features_mnet,y)
 base_model.trainable = True
 
+print("Number of layers in the base model: ", len(base_model.layers))
+
+# Fine-tune from this layer onwards
+fine_tune_at = 100
+
+# Freeze all the layers before the `fine_tune_at` layer
+for layer in base_model.layers[:fine_tune_at]:
+  layer.trainable =  False
+model.compile(optimizer=tf.keras.optimizers.Adam(lr=base_learning_rate/10),
+              loss=tf.keras.losses.CategoricalCrossentropy(from_logits=False),
+              metrics=['accuracy'])
+
+history_fine = model.fit(features_mnet,y,epochs=20,initial_epoch=history.epoch[-1],callbacks=cb)
 
 
 """ ensemble = VotingClassifier(estimators)

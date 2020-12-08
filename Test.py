@@ -89,7 +89,7 @@ filename = 'MLP_finalized_model.sav'
 loaded_model2 = pickle.load(open('./'+args["Name"]+ '/'+filename, 'rb'))
 MLP_result = loaded_model2.predict(testother)
 estimators.append(('MLP', loaded_model2))
-print ("mlp predict")
+
 
 
 
@@ -97,7 +97,6 @@ filename = 'MV5_finalized_model.hdf5'
 loaded_model3 = tf.keras.models.load_model('./'+args["Name"]+ '/'+filename)
 MV5_result = loaded_model3.predict(testfeatures)
 estimators.append(('MV5', loaded_model3))
-print ("MV5 predict")
 
 
 print(SVM_result)
