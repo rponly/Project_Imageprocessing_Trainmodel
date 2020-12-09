@@ -62,7 +62,10 @@ ap.add_argument("-n", "--Name", required=True,
 
 
 args = vars(ap.parse_args())
-imagePaths = list(paths.list_images('Dataset_Kaggle'))
+#imagePaths = list(paths.list_images('Dataset_Kaggle'))
+pathGen = list(paths.list_images("n0"))
+pathFake = list(paths.list_images("n1"))
+imagePaths = pathGen + pathFake
 
 try:
     os.mkdir(args["Name"])
@@ -126,7 +129,7 @@ for (i, imagePath) in enumerate(imagePaths):
 	labels.append(label)
 
 	# show an update every 1,000 images
-	if i > 0 and i % 1000 == 0:
+	if i > 0 and i % 10 == 0:
 		print("[INFO] processed {}/{}".format(i, len(imagePaths)))
 
 	

@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
-import { Container, Row, Col, Card, Button, Modal } from 'react-bootstrap'
+import { Container, Row, Col, Card, Button, Modal, FormControl, Spinner } from 'react-bootstrap'
 import '../assets/main.css'
+import axios from 'axios'
 
 export class Dashboard extends Component {
     constructor(props) {
@@ -8,30 +9,61 @@ export class Dashboard extends Component {
         this.state = {
             models: [
                 {
-                    name: "model one"
-                },
-                {
-                    name: "model two"
-                },
-                {
-                    name: "model three"
+                    name: "undefined"
                 }
             ],
             isModelModalOpen: false,
+            isTestModalOpen: false,
             dataToPassToModal: {
                 mode: null,
                 name: null
             },
-            loading: true
+            loading: true,
+            name: ""
         }
     }
 
     componentDidMount() {
-        this.setState({loading: false})
+        this.getModel()
+    }
+
+    getModel = () => {
+        this.getModelAPI().then(res => {
+
+            console.log(res);
+            let models = []
+
+            res.models.forEach(model => {
+                models.push({ name: model })
+            })
+
+            this.setState({
+                models: models
+            }, () => this.setState({loading: false}))
+        })
+    }
+
+    getModelAPI = () => {
+        return axios.get("http://127.0.0.1:5000/get").then(res => {
+            return res.data
+        })
     }
 
     _handleAddNewModel = () => {
-        alert("add new model")
+        const formData = new FormData();
+        formData.append("model", this.state.name.toLowerCase());
+        axios({
+            method: "POST",
+            url: "http://127.0.0.1:5000/add",
+            data: formData,
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+        }).then(res => {
+            console.log(res.data);
+            alert(res.data.msg)
+            this.getModel()
+        })
     }
 
     toggleModelModal = (data) => {
@@ -41,12 +73,21 @@ export class Dashboard extends Component {
         this.setState({isModelModalOpen: !this.state.isModelModalOpen})
     }
 
+    toggleTestModal = (data) => {
+        if(data)
+            this.setState({isTestModalOpen: !this.state.isTestModalOpen, dataToPassToModal: data})
+        else
+        this.setState({isTestModalOpen: !this.state.isTestModalOpen})
+    }
+
     render() {
         if(this.state.loading)
             return (<></>)
         return (
             <Container fluid>
                 <ModelModal isOpen={this.state.isModelModalOpen} toggle={this.toggleModelModal} data={this.state.dataToPassToModal}/>
+                <TestModal isOpen={this.state.isTestModalOpen} toggle={this.toggleTestModal} data={this.state.dataToPassToModal}/>
+
                 <Row>
                     <Col className="text-center m-1" >
                         <h5>Select Model</h5>
@@ -64,15 +105,16 @@ export class Dashboard extends Component {
                                         </Card.Body>
                                         <Card.Footer>
                                             <Button className="mx-1" variant="outline-primary" onClick={() => this.toggleModelModal({mode: 'train', name: model.name})}>Train</Button>
-                                            <Button className="mx-1" variant="outline-success" onClick={() => this.toggleModelModal({mode: 'test', name: model.name})}>Test</Button>
+                                            <Button className="mx-1" variant="outline-success" onClick={() => this.toggleTestModal({mode: 'test', name: model.name})}>Test</Button>
                                         </Card.Footer>
                                     </Card>
                                 )
                             })
                         }
                         { /** Add new model */}
-                            <Card className="m-1 text-center add-new" style={{ width: "250px" }} onClick={this._handleAddNewModel}>
-                                <Card.Body>
+                            <Card className="m-1 text-center add-new" style={{ width: "250px" }}>
+                                <Card.Header><FormControl placeholder="model_name" value={this.state.name} onChange={(e) => this.setState({name: e.target.value})}/></Card.Header>
+                                <Card.Body onClick={this._handleAddNewModel}>
                                     <h1>+</h1>
                                 </Card.Body>
                             </Card>
@@ -87,64 +129,191 @@ class ModelModal extends Component {
     constructor(props) {
         super(props)
         this.state = {
-            file: {},
-            imagePreviewUrl: ""
+            files: [],
+            imagePreviewUrl: [],
+            loadingOverlay: false
         }
     }
 
     _handleSubmit(e) {
         e.preventDefault();
-        // TODO: do something with -> this.state.file
-        console.log('handle uploading-', this.state.file);
+
+        let genFiles = this.state.genFiles
+        let fakeFiles = this.state.fakeFiles
+
+        const formData = new FormData();
+
+        Array.from(genFiles).forEach(file=>{
+            formData.append("genFiles", file);
+        });
+
+        Array.from(fakeFiles).forEach(file=>{
+            formData.append("fakeFiles", file);
+        });
+
+        formData.append("model", this.props.data.name);
+
+        this.setState({loadingOverlay: true})
+
+        axios({
+            method: "POST",
+            url: "http://127.0.0.1:5000/train",
+            data: formData,
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+        }).then(res => {
+            console.log(res);
+            this.setState({loadingOverlay: false}, () => {
+                alert(res.data.msg)
+                this._handleClose()
+            }
+            )
+        })
     }
 
-    _handleImageChange(e) {
+    _handleImageChangeGen(e) {
         e.preventDefault();
-    
-        let reader = new FileReader();
-        let file = e.target.files[0];
-    
-        reader.onloadend = () => {
-          this.setState({
-            file: file,
-            imagePreviewUrl: reader.result
-          });
-        }
-    
-        reader.readAsDataURL(file)
+        let files = e.target.files;
+        console.log(files);
+        this.setState({
+            genFiles: files
+        })
+    }
+
+    _handleImageChangeFake(e) {
+        e.preventDefault();
+        let files = e.target.files;
+        console.log(files);
+        this.setState({
+            fakeFiles: files
+        })
     }
 
     _handleClose = () => {
         this.setState({
-            file: {},
-            imagePreviewUrl: ""
+            files: [],
+            imagePreviewUrl: []
         }, () => this.props.toggle())
     }
 
     render() {
         return (
             <Modal show={this.props.isOpen} onHide={this._handleClose}>
+                {
+                    this.state.loadingOverlay ? <LoadingOverlay /> : <></>
+                }
                 <Modal.Header closeButton>
                 <Modal.Title>{ this.props.data.mode != undefined ? this.props.data.mode.toUpperCase() : "" } : { this.props.data.name != undefined ? this.props.data.name.toUpperCase() : "" }</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <div className="d-flex justify-content-center">
-                        {
-                            this.state.imagePreviewUrl != "" ? <img style={{maxWidth: "100%", maxHeight: "100%"}} src={this.state.imagePreviewUrl} /> : <h6>Please select an image</h6>
-                        }
-                    </div>
-                </Modal.Body>
-                <Modal.Footer className="d-flex justify-content-center">
                     <form onSubmit={(e)=>this._handleSubmit(e)}>
+                        <h5>Gen Signature</h5>
                         <input className="" 
                             type="file" 
-                            onChange={(e)=>this._handleImageChange(e)} />
-                        <Button variant="outline-primary" onClick={this._handleClose}>
+                            onChange={(e)=>this._handleImageChangeGen(e)} multiple="multiple"/>
+                        <hr />
+                        <h5>Fake Signature</h5>
+                        <input className="" 
+                            type="file" 
+                            onChange={(e)=>this._handleImageChangeFake(e)} multiple="multiple"/>
+                        <hr />
+                        <Button className="float-right" variant="outline-primary" type="submit">
                             { this.props.data.mode != undefined ? this.props.data.mode.toUpperCase() : "undefined" }
                         </Button>
                     </form>
-                </Modal.Footer>
+                    
+                </Modal.Body>
             </Modal>
+        )
+    }
+}
+
+class TestModal extends Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            files: [],
+            imagePreviewUrl: [],
+            loadingOverlay: false
+        }
+    }
+    _handleSubmit(e) {
+        e.preventDefault();
+
+        let files = this.state.files
+
+        const formData = new FormData();
+
+        Array.from(files).forEach(file=>{
+            formData.append("testFiles", file);
+        });
+
+        formData.append("model", this.props.data.name);
+
+        this.setState({loadingOverlay: true})
+
+        axios({
+            method: "POST",
+            url: "http://127.0.0.1:5000/test",
+            data: formData,
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+        }).then(res => {
+            console.log(res.data);
+            this.setState({loadingOverlay: false}, () => {
+                alert("SVM_result: "+res.data.svm+" MLP_result: "+res.data.mlp+" MV5_result: "+res.data.mv5)
+                this.props.toggle()
+            }
+            )
+        })
+    }
+
+    _handleImageChange(e) {
+        e.preventDefault();
+        let files = e.target.files;
+        console.log(files);
+        this.setState({
+            files: files
+        })
+    }
+    
+    render() {
+        return (
+            <Modal show={this.props.isOpen} onHide={this.props.toggle}>
+                {
+                    this.state.loadingOverlay ? <LoadingOverlay /> : <></>
+                }
+                    <Modal.Header closeButton>
+                    <Modal.Title>{ this.props.data.mode != undefined ? this.props.data.mode.toUpperCase() : "" } : { this.props.data.name != undefined ? this.props.data.name.toUpperCase() : "" }</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        <form onSubmit={(e)=>this._handleSubmit(e)}>
+                            <h5>Test Signature</h5>
+                            <input className="" 
+                                type="file" 
+                                onChange={(e)=>this._handleImageChange(e)} multiple="multiple"/>
+                                <hr />
+                            <Button className="float-right" variant="outline-primary" type="submit">
+                                { this.props.data.mode != undefined ? this.props.data.mode.toUpperCase() : "undefined" }
+                            </Button>
+                        </form>
+                        
+                    </Modal.Body>
+                </Modal>
+            
+        )
+    }
+}
+
+class LoadingOverlay extends Component {
+    render() {
+        return (
+            <div style={{position: 'fixed', top: '0', left: '0', width: '100%', height: '100vh', background: "rgba(0, 0, 0, 0.8)", zIndex: '999', display: 'grid', justifyContent: 'center', alignContent: 'center', gridGap: '1em'}}>
+              <Spinner animation="border" variant="primary" style={{ width: '5rem', height: '5rem', justifySelf: 'center'}} />
+              <text style={{ justifySelf: 'center', textShadow: "rgba(0, 0, 0, 0.8)"}}>L o a d i n g . . .</text>
+            </div>
         )
     }
 }
